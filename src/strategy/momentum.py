@@ -67,3 +67,18 @@ def select_top_n(scores: pd.Series, n: int) -> list[str]:
     be a little thin, especially in the earliest years of the backtest.
     """
     return scores.sort_values(ascending=False).head(n).index.tolist()
+
+
+def select_bottom_n(scores: pd.Series, n: int) -> list[str]:
+    """Rank momentum scores ascending and return the bottom `n` tickers -
+    the LOWEST-momentum names, i.e. the short book of the long-short
+    strategy (src/backtest/long_short_engine.py).
+
+    Exact mirror of select_top_n, including the same lenient behavior when
+    fewer than `n` tickers have valid scores. Note that if the scored
+    universe ever held fewer than (top-n + bottom-n) names, the two
+    selections could overlap - the long-short engine checks for that and
+    fails loudly rather than silently holding a stock long and short at
+    the same time.
+    """
+    return scores.sort_values(ascending=True).head(n).index.tolist()

@@ -24,6 +24,12 @@ same no-look-ahead discipline as Phase 1. See `notebooks/02_value_backtest.ipynb
 momentum/value blends at any split, with the full metric set for each. See
 `notebooks/03_strategy_comparison.ipynb` and `src/evaluation/comparison.py`.
 
+**Phase 4 (complete):** a LONG-SHORT momentum strategy — long the 50 highest-momentum names,
+short the 50 lowest, using the exact Phase 1 signal/universe/window — at configurable exposures
+(the classic dollar-neutral 1.0/1.0 academic factor and the practical 130/30 fund structure),
+with per-book turnover costing and a sensitivity-tested stock-borrow fee. See
+`notebooks/04_long_short_momentum.ipynb`.
+
 Planned extensions: deeper slippage modelling, a quality factor, and universe expansion beyond
 the S&P 500.
 
@@ -34,7 +40,7 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows (source .venv/bin/activate on Mac/Linux)
 pip install -r requirements.txt
 python -m pytest tests/         # fast, offline - should be all green
-jupyter notebook notebooks/     # then run 01, 02, 03 in order
+jupyter notebook notebooks/     # then run 01, 02, 03, 04 in order
 ```
 
 The first run of each notebook downloads and caches its data (prices from yfinance, fundamentals

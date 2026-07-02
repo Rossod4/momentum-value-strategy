@@ -131,3 +131,89 @@ class ValueBacktestConfig:
 
 
 DEFAULT_VALUE_CONFIG = ValueBacktestConfig()
+
+
+@dataclass
+class LongShortBacktestConfig:
+    """Configuration for the LONG-SHORT momentum strategy (Phase 4,
+    src/backtest/long_short_engine.py) - its own dataclass, like
+    ValueBacktestConfig, rather than extra fields bolted onto
+    BacktestConfig: the exposure/borrow-fee fields mean nothing to the
+    long-only strategies, and keeping them separate means Phase 1's config
+    (and results) cannot be disturbed by Phase 4 work.
+
+    Everything the long book shares with Phase 1 momentum (universe,
+    window, signal parameters, rebalance cadence, benchmark, cost
+    assumption) deliberately uses the SAME values/defaults as
+    BacktestConfig, so the long-short results are directly comparable to
+    the long-only ones rather than differing for incidental reasons.
+    """
+
+    # --- Backtest window --- same as BacktestConfig, for comparability.
+    # (As there, start_date is the first REBALANCE date; the engine fetches
+    # 13 extra months of history before it for the momentum lookback.)
+    start_date: str = "2012-01-01"
+    end_date: str = "2026-06-30"
+
+    # --- Momentum signal --- identical 12-1 spec to Phase 1; the short
+    # book uses the same signal, just read from the other end of the
+    # ranking (lowest momentum instead of highest).
+    lookback_months: int = 12
+    skip_months: int = 1
+
+    # --- Portfolio construction ---
+    rebalance_freq: str = "ME"  # pandas offset alias: month-end
+    top_n: int = 50  # long book: the 50 HIGHEST-momentum names, equal-weighted
+    bottom_n: int = 50  # short book: the 50 LOWEST-momentum names, equal-weighted
+
+    # --- Exposures ---
+    # How large each book is, as a fraction of the portfolio's capital
+    # (its net asset value). The two headline variants in notebook 04:
+    #   * 1.0 / 1.0  - "dollar-neutral": $1 long and $1 short per $1 of
+    #     capital. This is the classic academic winners-minus-losers
+    #     momentum factor (the market's overall direction largely cancels
+    #     out, leaving the pure momentum bet).
+    #   * 1.3 / 0.3  - "130/30": $1.30 long and $0.30 short per $1 of
+    #     capital. Net exposure stays 1.0 (like a normal long-only fund)
+    #     but the short book adds a way to profit from the weakest names.
+    # Known simplification, stated plainly: consistent with the project's
+    # 0% risk-free-rate assumption, NO interest is earned on the cash
+    # raised by short sales, and NO financing cost is charged on borrowing
+    # to run the 130% long book. Both are real-world cash flows a fund
+    # would face; with rates near zero they roughly cancel, with rates
+    # high they don't. See notebook 04's Limitations section.
+    long_exposure: float = 1.0
+    short_exposure: float = 1.0
+
+    # --- Benchmark ---
+    benchmark_ticker: str = "SPY"
+
+    # --- Evaluation ---
+    risk_free_rate: float = 0.0
+
+    # --- Transaction costs --- same blended one-way assumption as
+    # BacktestConfig (see that class's comment); each book pays it on its
+    # own turnover, scaled by that book's exposure.
+    one_way_cost_bps: float = 10.0
+
+    # --- Borrow fee ---
+    # Shorting a stock means BORROWING it (from a broker's lending pool)
+    # before selling it, and the lender charges an annualized fee for
+    # that. 30bps/year is a typical "general collateral" rate for liquid
+    # large-caps; genuinely hard-to-borrow names can cost hundreds of bps,
+    # so - matching the project's transaction-cost philosophy - this is
+    # one honest blended number, sensitivity-tested in notebook 04's
+    # robustness appendix (0 / 30 / 100 bps) rather than trusted as a
+    # point estimate. Charged monthly on the short book's exposure:
+    # short_exposure * borrow_fee_annual_bps / 12 / 10000.
+    borrow_fee_annual_bps: float = 30.0
+
+    # --- Data quality --- reused from BacktestConfig for the same reason.
+    price_outlier_threshold: float = 0.5
+
+    # --- Data caching --- shared cache with the other strategies.
+    cache_dir: Path = REPO_ROOT / "data" / "cache"
+    constituents_url: str = CONSTITUENTS_URL
+
+
+DEFAULT_LONG_SHORT_CONFIG = LongShortBacktestConfig()
