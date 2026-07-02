@@ -10,6 +10,7 @@ A Python-based stock screener and strategy backtesting tool. I want to:
 - Evaluate strategies properly (e.g. Sharpe ratio, max drawdown, CAGR, benchmark comparison) rather than just eyeballing returns
 - Produce verifiable results
 - Account for real world variables such as slippage and fees
+- Stratergies should be able to function well in the real world
 
 ## Why I'm building it
 Two goals, in this order:
