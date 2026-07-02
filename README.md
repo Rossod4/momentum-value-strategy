@@ -28,7 +28,18 @@ momentum/value blends at any split, with the full metric set for each. See
 short the 50 lowest, using the exact Phase 1 signal/universe/window — at configurable exposures
 (the classic dollar-neutral 1.0/1.0 academic factor and the practical 130/30 fund structure),
 with per-book turnover costing and a sensitivity-tested stock-borrow fee. See
-`notebooks/04_long_short_momentum.ipynb`.
+`notebooks/04_long_short_momentum.ipynb`. The dollar-neutral variant backtested essentially
+flat — reported as-is, and later robustness-checked (see Phase 5), because it matches the
+published post-2009 momentum-crash literature.
+
+**Phase 5 (complete):** consolidation and bias audit. All branches merged into one history,
+look-ahead re-verified across every phase, the value strategy's fundamentals coverage gap
+*measured* rather than footnoted, the flat cost model stress-tested against estimated spreads
+and a computed capacity ceiling, and — most importantly — a **walk-forward test** of the one
+genuinely data-fitted conclusion in the project (the "best" momentum/value blend weight),
+which did *not* fully survive out-of-sample. Findings, honest limitations, and every number's
+provenance are in `REVIEW_PHASE5.md`; the walk-forward and robustness results are reproducible
+in `notebooks/05_walk_forward_and_robustness.ipynb` and `scripts/`.
 
 Planned extensions: deeper slippage modelling, a quality factor, and universe expansion beyond
 the S&P 500.
@@ -40,12 +51,14 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows (source .venv/bin/activate on Mac/Linux)
 pip install -r requirements.txt
 python -m pytest tests/         # fast, offline - should be all green
-jupyter notebook notebooks/     # then run 01, 02, 03, 04 in order
+jupyter notebook notebooks/     # then run 01, 02, 03, 04, 05 in order
 ```
 
 The first run of each notebook downloads and caches its data (prices from yfinance, fundamentals
 from SEC EDGAR) under `data/cache/` — slow once, fast forever after. The cache is gitignored;
-see the reproducibility notes in `REVIEW.md`.
+see the reproducibility notes in `REVIEW.md`. The two audit scripts
+(`scripts/coverage_gap_analysis.py`, `scripts/cost_realism_analysis.py`) run offline against
+that cache and reproduce the survivorship and cost-realism numbers quoted in `REVIEW_PHASE5.md`.
 
 ## Design principles
 
