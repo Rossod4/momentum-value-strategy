@@ -27,19 +27,30 @@ def cagr(equity_curve: pd.Series) -> float:
     return total_return ** (1 / years) - 1
 
 
-def annualized_vol(monthly_returns: pd.Series) -> float:
-    """Annualized volatility from a series of monthly returns."""
-    return monthly_returns.std() * np.sqrt(MONTHS_PER_YEAR)
+def annualized_vol(returns: pd.Series, periods_per_year: int = MONTHS_PER_YEAR) -> float:
+    """Annualized volatility from a series of periodic returns.
+
+    `periods_per_year` defaults to 12 (monthly returns, Phase 1's momentum
+    cadence) but must be overridden for any other rebalance frequency - e.g.
+    4 for the value strategy's quarterly returns (src/backtest/value_engine.py).
+    Passing the wrong value here wouldn't error, just silently misstate
+    volatility/Sharpe, so it's a required judgment call at the call site,
+    not something this function can infer from the data.
+    """
+    return returns.std() * np.sqrt(periods_per_year)
 
 
-def sharpe_ratio(monthly_returns: pd.Series, risk_free_rate: float = 0.0) -> float:
-    """Annualized Sharpe ratio from a series of monthly returns.
+def sharpe_ratio(
+    returns: pd.Series, risk_free_rate: float = 0.0, periods_per_year: int = MONTHS_PER_YEAR
+) -> float:
+    """Annualized Sharpe ratio from a series of periodic returns.
 
     `risk_free_rate` is an ANNUAL rate (e.g. 0.0 for the Phase 1 default
     assumption of a 0% risk-free rate - see config.py for why).
+    `periods_per_year` - see annualized_vol()'s docstring above.
     """
-    annualized_return = monthly_returns.mean() * MONTHS_PER_YEAR
-    vol = annualized_vol(monthly_returns)
+    annualized_return = returns.mean() * periods_per_year
+    vol = annualized_vol(returns, periods_per_year)
     if vol == 0:
         return np.nan
     return (annualized_return - risk_free_rate) / vol
@@ -60,8 +71,13 @@ def summary_table(
     benchmark_returns: pd.Series,
     benchmark_equity: pd.Series,
     risk_free_rate: float = 0.0,
+    periods_per_year: int = MONTHS_PER_YEAR,
 ) -> pd.DataFrame:
-    """Side-by-side comparison table: Strategy (Gross) / Strategy (Net) / Benchmark."""
+    """Side-by-side comparison table: Strategy (Gross) / Strategy (Net) / Benchmark.
+
+    `periods_per_year` - see annualized_vol()'s docstring. Defaults to 12
+    (monthly); pass 4 for a quarterly-rebalanced strategy.
+    """
     columns = {
         "Strategy (Gross)": (strategy_gross_returns, strategy_gross_equity),
         "Strategy (Net of costs)": (strategy_net_returns, strategy_net_equity),
@@ -71,8 +87,8 @@ def summary_table(
     for label, (returns, equity) in columns.items():
         rows[label] = {
             "CAGR": cagr(equity),
-            "Annualized Volatility": annualized_vol(returns),
-            "Sharpe Ratio": sharpe_ratio(returns, risk_free_rate),
+            "Annualized Volatility": annualized_vol(returns, periods_per_year),
+            "Sharpe Ratio": sharpe_ratio(returns, risk_free_rate, periods_per_year),
             "Max Drawdown": max_drawdown(equity),
         }
     return pd.DataFrame(rows)

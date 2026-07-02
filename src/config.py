@@ -80,3 +80,50 @@ class BacktestConfig:
 
 
 DEFAULT_CONFIG = BacktestConfig()
+
+
+@dataclass
+class ValueBacktestConfig:
+    """Configuration for the value strategy (src/strategy/value.py,
+    src/backtest/value_engine.py) - kept as its own dataclass rather than
+    added to BacktestConfig, since several fields (rebalance_freq, the
+    metric composite) don't apply to momentum at all. Fields that ARE
+    shared between the two strategies (date window, benchmark, cost
+    assumption, cache location) deliberately use the same values/defaults
+    as BacktestConfig above, so the two strategies' results are directly
+    comparable in the notebook rather than differing for incidental reasons.
+    """
+
+    # --- Backtest window --- same as BacktestConfig, for comparability.
+    start_date: str = "2012-01-01"
+    end_date: str = "2026-06-30"
+
+    # --- Portfolio construction ---
+    # Quarterly, not monthly like momentum: fundamentals only change when a
+    # company files a new 10-Q/10-K, so rebalancing monthly would mostly
+    # just churn turnover/costs against stale, unchanged ratios.
+    rebalance_freq: str = "QE"  # pandas offset alias: quarter-end
+    top_n: int = 50  # same concentration as momentum's top_n, for comparability
+
+    # --- Benchmark ---
+    benchmark_ticker: str = "SPY"
+
+    # --- Evaluation ---
+    risk_free_rate: float = 0.0
+
+    # --- Transaction costs --- same blended assumption as BacktestConfig;
+    # see that class's comment for the reasoning.
+    one_way_cost_bps: float = 10.0
+
+    # --- Data quality --- reused from BacktestConfig for the same reason.
+    price_outlier_threshold: float = 0.5
+
+    # --- Data caching --- shared cache directory and data sources with the
+    # momentum strategy (prices, point-in-time constituents); fundamentals
+    # get their own subdirectory inside the same cache_dir (see
+    # src/data_layer/fundamentals.py).
+    cache_dir: Path = REPO_ROOT / "data" / "cache"
+    constituents_url: str = CONSTITUENTS_URL
+
+
+DEFAULT_VALUE_CONFIG = ValueBacktestConfig()
