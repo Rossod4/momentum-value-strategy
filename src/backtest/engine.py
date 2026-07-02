@@ -31,6 +31,7 @@ class BacktestResult:
     universe_size_history: pd.Series  # point-in-time constituent count per formation date
     failed_tickers: list = field(default_factory=list)
     missing_forward_price_count: int = 0
+    extreme_return_count: int = 0
 
 
 def compute_warmup_start(start_date: str, lookback_months: int, skip_months: int) -> str:
@@ -39,6 +40,66 @@ def compute_warmup_start(start_date: str, lookback_months: int, skip_months: int
     start = pd.Timestamp(start_date)
     warmup = start - relativedelta(months=lookback_months + skip_months)
     return warmup.strftime("%Y-%m-%d")
+
+
+# A single held stock implying a monthly gain beyond this is treated as a
+# vendor data glitch, not genuine price action, and excluded from that
+# month's equal-weight average.
+#
+# This is deliberately a much higher bar than the daily-return outlier
+# threshold used for the informational quality-check display in the
+# notebook (config.price_outlier_threshold, ~50%): a 50%+ move in a single
+# DAY is almost always a bad print for a large-cap name, but a 50%+ move
+# over an entire HOLDING MONTH is not - momentum strategies specifically
+# select recent high-flyers, and genuine monthly gains well above 50%
+# (short squeezes, biotech trial results, M&A premia) do happen. Reusing
+# the daily threshold here would silently strip out real, sometimes very
+# profitable, momentum winners and bias the strategy's reported returns
+# downward. 300% was chosen as a bound that's essentially unreachable
+# organically in one month for an S&P 500-type name, based on a real
+# vendor glitch found during development: ticker CBE (Cooper Industries,
+# delisted Nov 2012 after being acquired by Eaton) continued to trade
+# under its old symbol afterward with prices swinging between $0.005 and
+# $300+ month to month - implying single-month "returns" in the tens of
+# thousands of percent. Only the upside is capped: a monthly LOSS is
+# naturally bounded at -100% and a genuine collapse (fraud, bankruptcy)
+# can legitimately look just as extreme, so excluding large losses here
+# would risk hiding real downside risk rather than data errors.
+EXTREME_MONTHLY_RETURN_BOUND = 3.0
+
+
+def compute_holding_period_return(
+    formation_prices: pd.Series,
+    next_prices: pd.Series,
+    extreme_return_bound: float = EXTREME_MONTHLY_RETURN_BOUND,
+) -> tuple[float, int, int]:
+    """Equal-weight average return for one holding period.
+
+    Compares each held stock's price at `formation_prices` (start of the
+    holding month) to its price at `next_prices` (end of the holding month).
+
+    Two categories of individual-stock return are excluded from the
+    equal-weight average rather than trusted blindly, and both are counted
+    so the exclusions are visible rather than hidden:
+      - missing: the stock has no valid price at one end of the period
+        (e.g. a mid-holding delisting or data gap).
+      - extreme: the implied single-stock gain exceeds `extreme_return_bound`
+        (see EXTREME_MONTHLY_RETURN_BOUND above for why 300% and why only
+        the upside is guarded).
+
+    Returns (gross_return, missing_price_count, extreme_return_count).
+    """
+    valid = next_prices.notna() & formation_prices.notna()
+    missing_count = int((~valid).sum())
+
+    holding_returns = (next_prices[valid] / formation_prices[valid]) - 1
+
+    is_extreme = holding_returns > extreme_return_bound
+    extreme_count = int(is_extreme.sum())
+    holding_returns = holding_returns[~is_extreme]
+
+    gross_return = holding_returns.mean() if len(holding_returns) > 0 else 0.0
+    return gross_return, missing_count, extreme_count
 
 
 def run_backtest(config: BacktestConfig) -> BacktestResult:
@@ -76,6 +137,7 @@ def run_backtest(config: BacktestConfig) -> BacktestResult:
     turnover_history = {}
     universe_size_history = {}
     missing_forward_price_count = 0
+    extreme_return_count = 0
     old_portfolio: list[str] = []
 
     for formation_date in eligible_formation_dates:
@@ -109,17 +171,19 @@ def run_backtest(config: BacktestConfig) -> BacktestResult:
         next_prices = month_end_prices.loc[next_date, new_portfolio]
 
         # A held stock can occasionally be missing its next-month price
-        # (delisting mid-holding-period, or a data gap). We exclude it from
-        # this month's equal-weight average rather than assuming a return
-        # for it - simple and transparent, but note this is a slightly
-        # optimistic simplification: a true delisting is usually a loss,
-        # not a "doesn't count" event. The count of these exclusions is
-        # tracked and reported so it's visible, not hidden.
-        valid = next_prices.notna() & formation_prices.notna()
-        missing_forward_price_count += int((~valid).sum())
-
-        holding_returns = (next_prices[valid] / formation_prices[valid]) - 1
-        gross_return = holding_returns.mean() if len(holding_returns) > 0 else 0.0
+        # (delisting mid-holding-period, or a data gap), or imply an
+        # implausible gain (a vendor data glitch - see
+        # EXTREME_MONTHLY_RETURN_BOUND above). Both are excluded from this
+        # month's equal-weight average rather than trusted blindly - note
+        # the missing-price case is a slightly optimistic simplification:
+        # a true delisting is usually a loss, not a "doesn't count" event.
+        # Both counts are tracked and reported so the exclusions are
+        # visible, not hidden.
+        gross_return, missing_count, extreme_count = compute_holding_period_return(
+            formation_prices, next_prices
+        )
+        missing_forward_price_count += missing_count
+        extreme_return_count += extreme_count
 
         net_return = apply_transaction_costs(gross_return, turnover, config.one_way_cost_bps)
 
@@ -144,6 +208,7 @@ def run_backtest(config: BacktestConfig) -> BacktestResult:
         universe_size_history=pd.Series(universe_size_history).sort_index(),
         failed_tickers=failed_tickers,
         missing_forward_price_count=missing_forward_price_count,
+        extreme_return_count=extreme_return_count,
     )
 
 
