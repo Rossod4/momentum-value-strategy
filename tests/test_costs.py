@@ -25,9 +25,17 @@ def test_turnover_empty_old_portfolio_is_full_turnover():
 
 
 def test_apply_transaction_costs_exact_bps_subtraction():
-    # turnover=1.0, cost=10bps -> subtract 10/10000 = 0.001
+    # Full replacement (turnover=1.0) means selling 100% AND buying 100% of
+    # the portfolio - two one-way trades - so at 10bps one-way the charge is
+    # 2 * 1.0 * 10/10000 = 0.002, not 0.001.
     net = apply_transaction_costs(gross_return=0.05, turnover=1.0, one_way_cost_bps=10.0)
-    assert net == pytest.approx(0.05 - 0.001)
+    assert net == pytest.approx(0.05 - 0.002)
+
+
+def test_apply_transaction_costs_half_turnover():
+    # Replacing half the names: sell 50% + buy 50% -> 2 * 0.5 * 10bps = 10bps.
+    net = apply_transaction_costs(gross_return=0.02, turnover=0.5, one_way_cost_bps=10.0)
+    assert net == pytest.approx(0.02 - 0.001)
 
 
 def test_apply_transaction_costs_zero_turnover_no_cost():

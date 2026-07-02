@@ -65,6 +65,10 @@ class BacktestConfig:
     # justify a more granular model. It's exposed here so it can be
     # stress-tested (see the robustness appendix in the notebook) rather
     # than trusted as a single point estimate.
+    #
+    # "One-way" means EACH side of a trade pays this: replacing a holding
+    # involves both a sell and a buy, so the per-period charge is
+    # 2 * turnover * this figure - see src/costs/transaction_costs.py.
     one_way_cost_bps: float = 10.0
 
     # --- Data quality ---

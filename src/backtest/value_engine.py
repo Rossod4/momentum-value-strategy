@@ -104,8 +104,6 @@ def run_value_backtest(config: ValueBacktestConfig) -> BacktestResult:
             if ticker in facts_by_ticker
         }
 
-        if formation_date not in quarter_end_prices.index:
-            continue
         # get_prices() only returns columns for tickers it actually fetched
         # successfully (failures are dropped, not filled with NaN columns -
         # see prices.py) - membership_t can include tickers that failed to

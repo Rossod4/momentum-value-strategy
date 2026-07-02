@@ -5,7 +5,6 @@ numpy
 matplotlib
 pyarrow
 python-dateutil
-tqdm
 jupyter
 ipykernel
 pytest

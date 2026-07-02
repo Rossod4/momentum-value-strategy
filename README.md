@@ -11,9 +11,35 @@ Built by [Alex Gard](mailto:arwgard@icloud.com), a Mathematics student at the Un
 
 ## Status
 
-**Phase 1 (in progress):** a long-only, equal-weight, S&P 500 momentum strategy (classic 12-1 month formation), backtested over ~10-15 years, evaluated against core metrics (CAGR, volatility, Sharpe, max drawdown, benchmark comparison). No transaction costs modelled yet.
+**Phase 1 (complete):** a long-only, equal-weight, S&P 500 momentum strategy (classic 12-1 month
+formation), monthly-rebalanced, backtested 2012–2026 on point-in-time index membership, net of a
+turnover-based transaction cost model. See `notebooks/01_momentum_backtest.ipynb`.
 
-Planned next phases: transaction cost/slippage modelling, value and quality factors, deeper robustness testing, and universe expansion beyond the S&P 500.
+**Phase 2 (complete):** a long-only, equal-weight, quarterly-rebalanced value composite
+(P/B + P/E + EV/EBITDA + growth-adjusted value) built on a from-scratch, point-in-time SEC EDGAR
+fundamentals data layer — every figure gated on the date it was actually *filed*, to enforce the
+same no-look-ahead discipline as Phase 1. See `notebooks/02_value_backtest.ipynb`.
+
+**Phase 3 (complete):** head-to-head comparison of the two strategies plus fixed-weight
+momentum/value blends at any split, with the full metric set for each. See
+`notebooks/03_strategy_comparison.ipynb` and `src/evaluation/comparison.py`.
+
+Planned extensions: deeper slippage modelling, a quality factor, and universe expansion beyond
+the S&P 500.
+
+## How to run it
+
+```
+python -m venv .venv
+.venv\Scripts\activate          # Windows (source .venv/bin/activate on Mac/Linux)
+pip install -r requirements.txt
+python -m pytest tests/         # fast, offline - should be all green
+jupyter notebook notebooks/     # then run 01, 02, 03 in order
+```
+
+The first run of each notebook downloads and caches its data (prices from yfinance, fundamentals
+from SEC EDGAR) under `data/cache/` — slow once, fast forever after. The cache is gitignored;
+see the reproducibility notes in `REVIEW.md`.
 
 ## Design principles
 
