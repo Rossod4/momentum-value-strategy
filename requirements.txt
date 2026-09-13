@@ -1,10 +1,12 @@
-yfinance
-requests
-pandas
-numpy
-matplotlib
-pyarrow
-python-dateutil
-jupyter
-ipykernel
-pytest
+# Pinned to the versions the results were produced with (Python 3.12+).
+# Upgrade deliberately: bump a pin, run `python -m pytest tests/`, re-run a notebook.
+yfinance==1.5.2
+requests==2.34.2
+pandas==3.0.5
+numpy==2.5.2
+matplotlib==3.11.1
+pyarrow==25.0.1
+python-dateutil==2.9.0.post0
+jupyter==1.1.1
+ipykernel==7.3.0
+pytest==9.1.1

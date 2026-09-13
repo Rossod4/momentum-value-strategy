@@ -1,170 +1,137 @@
-# Momentum & Value Strategy Backtester
+# Momentum and Value Strategy Backtester
 
-A point-in-time, cost-aware backtester for factor strategies on the S&P 500, built to answer one
-question honestly: **do textbook momentum and value tilts actually beat buy-and-hold once you
-remove look-ahead bias, survivorship bias, and transaction costs?**
+[![tests](https://github.com/Rossod4/momentum-value-strategy/actions/workflows/tests.yml/badge.svg)](https://github.com/Rossod4/momentum-value-strategy/actions/workflows/tests.yml)
 
-Built by [Alex Gard](mailto:arwgard@icloud.com), Mathematics undergraduate at the University of
-Bristol. Every design decision in here is meant to be explainable, not just functional.
+A Python backtester for two classic equity factor strategies, momentum and value, on the
+S&P 500 from 2012 to 2026. The point of the project is not the headline returns but the
+discipline around them: point-in-time index membership, fundamentals gated on the date
+they were actually filed, a transaction cost and capacity model, long-short variants, and
+a walk-forward test that overturned the project's own best-looking result.
 
-## Headline results
-
-Long-only, equal-weight, top-50 portfolios drawn from the S&P 500 as it was constituted on each
-rebalance date. 2012 to 2026, net of a 10 bps one-way transaction cost on turnover.
-
-| | Momentum (12-1, monthly) | Value composite (quarterly) | 50/50 blend (quarterly)* | SPY buy & hold |
-|---|---|---|---|---|
-| CAGR (net) | 15.7% | 16.1% | 16.3% | 14.5% |
-| Annualised volatility | 16.9% | 17.1% | 16.1% | 14.1% |
-| Sharpe (net) | 0.96 | 0.94 | 1.00 | 1.05 |
-| Max drawdown (net) | −19.7% | −33.8% | −26.4% | −23.9% |
-| Cost drag on CAGR | 0.78%/yr | 0.22%/yr | | |
-
-\* Blends are evaluated on a common quarterly window, so the pure sleeves in that sweep differ
-slightly from the native-frequency columns. Full sweep in [REVIEW.md](REVIEW.md) §4.
+Built by [Alex Gard](mailto:arwgard@icloud.com), a Mathematics student at the University
+of Bristol, to understand how these strategies behave and to have a project where every
+design decision can be defended in an interview.
 
 ![Momentum strategy vs SPY, growth of $1, log scale](docs/img/momentum_vs_spy.png)
 
-**The honest reading.** Both factors beat SPY on raw return by 1 to 2 percentage points a year,
-but neither beats it risk-adjusted in this window. 2012 to 2026 was a long, low-volatility bull
-market, the easiest possible environment for buy-and-hold. A backtester that never produces an
-awkward result would be suspicious.
+## Results
 
-The classic academic long-short momentum factor (long top 50, short bottom 50, dollar-neutral)
-was **flat**: net CAGR +0.5%, Sharpe 0.12, max drawdown −56%, negative in 59% of rolling
-three-year windows. That matches the post-2009 momentum-crash literature (Daniel & Moskowitz) and
-is reported as found. The practical 130/30 structure did fine (CAGR 16.2%, Sharpe 0.91).
+Net of transaction costs, 2012 to mid-2026, equal-weight top-50 portfolios.
 
-## What I learned
+| Strategy | Net CAGR | Sharpe | Max drawdown |
+|---|---:|---:|---:|
+| Long-only 12-1 momentum, monthly | 15.7% | 0.96 | -20% |
+| Value composite, quarterly | 15.9% | 0.93 | -34% |
+| 130/30 long-short momentum | 16.4% | 0.93 | -19% |
+| Dollar-neutral long-short momentum | 1.0% | 0.14 | -56% |
+| S&P 500 (SPY) | 14.5% to 14.8% | 1.02 to 1.05 | -24% |
 
-1. **My best-looking conclusion did not survive out-of-sample testing.** The full-sample tables
-   said the 50/50 momentum/value blend was best. A walk-forward test (pick the best blend weight
-   from the trailing 5 years, apply it to the next unseen year, roll 2017 to 2026) showed the
-   chosen weight bouncing between 0% and 100% momentum, and adaptive weighting (Sharpe 0.78)
-   underperforming every fixed weight (0.76 to 0.86). Out of sample, fixed 50/50 (0.85) is tied
-   with pure momentum (0.85). The defensible claim is weaker: any fixed blend did fine, none was
-   reliably best, and timing the blend made things worse.
+Figures are from the committed notebook runs (August and September 2026) and move by a
+few tenths of a percent between data refreshes; SPY is measured at each strategy's own
+rebalancing frequency, hence the range. Three findings matter more than the numbers:
 
-2. **Point-in-time data is most of the work.** Historical index membership had to be
-   reconstructed per rebalance date, and every SEC fundamental had to be gated on the date it
-   was *filed*, not the period it covered. Restated quarters keep only the version visible at the
-   time. Getting this wrong produces a strategy that quietly trades on information nobody had.
+- **The long-only strategies beat the index on return but not on risk-adjusted return.**
+  SPY has the highest Sharpe ratio in the table. Neither strategy is a free lunch.
+- **The classic dollar-neutral momentum factor was flat over this window**, and stays
+  flat in both halves, under a 6-1 construction, and in over half of rolling 3-year
+  windows. This matches the published post-2009 momentum-crash literature. The 130/30
+  structure, which keeps most of the long book, is the practically interesting variant.
+- **"The 50/50 blend is best" did not survive out-of-sample.** Choosing the blend weight
+  from trailing data would have underperformed every fixed weight, and the chosen weight
+  jumped around from year to year. The defensible claim is weaker: any fixed blend did
+  fine, none was reliably best, and timing the blend made things worse.
 
-3. **Survivorship bias should be measured, not footnoted.** Around 13% of the historical universe
-   has no price data at all (long-delisted names Yahoo no longer serves) and a further 2% has
-   prices but no fundamentals. I measured the return tilt on the measurable slice: about +2%/yr in
-   the value strategy's favour, with a t-statistic of 0.47, so indistinguishable from noise, but
-   best read as a lower bound because mid-quarter delistings are dropped rather than booked.
-   Crucially, SPY does not suffer this gap, which slightly flatters every strategy-vs-SPY
-   comparison here. That is stated wherever the comparison appears.
+The full reasoning, including three bugs found and fixed during review, is in
+[`REVIEW.md`](REVIEW.md) and [`REVIEW_PHASE5.md`](REVIEW_PHASE5.md). If you read one
+file, read the second.
 
-4. **A flat cost model is fine if you know where it breaks.** Corwin-Schultz spread estimates on
-   the cached data and a daily-volume capacity bound put the 10 bps assumption at
-   realistic-to-conservative up to roughly $100M to $300M AUM. It is thinnest on the short book of
-   the long-short strategy, where bottom-momentum names have the widest spreads and hard-to-borrow
-   fees are understated. A per-stock impact model would have been false precision without proper
-   quote data.
+## What was built, in order
 
-5. **Fixed textbook parameters are a real defence against overfitting, but not a complete one.**
-   Nothing in the strategies (12-1 lookback, top 50, the value composite, rebalance cadence) was
-   fitted to this data. The one thing that *was* fitted, the blend weight, is exactly the thing
-   that failed out of sample.
-
-## What's in it
-
-| Phase | What it does | Notebook |
+| Phase | Notebook | What it adds |
 |---|---|---|
-| 1 | Long-only 12-1 momentum, monthly rebalance, point-in-time S&P 500 membership, turnover-based costs | `01_momentum_backtest.ipynb` |
-| 2 | Long-only value composite (P/B, P/E, EV/EBITDA, growth-adjusted) on a from-scratch, filed-date-gated SEC EDGAR fundamentals layer, quarterly rebalance | `02_value_backtest.ipynb` |
-| 3 | Head-to-head comparison and fixed-weight blend sweep | `03_strategy_comparison.ipynb` |
-| 4 | Long-short momentum at dollar-neutral and 130/30 exposures, per-book costing, sensitivity-tested borrow fee | `04_long_short_momentum.ipynb` |
-| 5 | Bias audit: look-ahead re-verification, measured survivorship gap, cost realism, walk-forward test of the blend weight, robustness of the long-short result | `05_walk_forward_and_robustness.ipynb` |
+| 1 | [`01_momentum_backtest`](notebooks/01_momentum_backtest.ipynb) | Long-only 12-1 momentum on point-in-time S&P 500 membership, turnover-based costs, monthly rebalancing |
+| 2 | [`02_value_backtest`](notebooks/02_value_backtest.ipynb) | Value composite (P/B, P/E, EV/EBITDA, growth-adjusted) on a from-scratch SEC EDGAR data layer where every figure is gated on its filing date |
+| 3 | [`03_strategy_comparison`](notebooks/03_strategy_comparison.ipynb) | Head-to-head comparison and fixed-weight blends |
+| 4 | [`04_long_short_momentum`](notebooks/04_long_short_momentum.ipynb) | Dollar-neutral and 130/30 long-short momentum with per-book costs and a borrow fee |
+| 5 | [`05_walk_forward_and_robustness`](notebooks/05_walk_forward_and_robustness.ipynb) | Rolling-window consistency, walk-forward test of the blend weight, robustness of the flat long-short result |
 
-The two audit documents are the detailed record:
+The notebooks are committed with their outputs, so the results can be read on GitHub
+without running anything.
 
-- [REVIEW.md](REVIEW.md): the Phase 3 review. Three bugs found and fixed (one-sided cost
-  charging, a misaligned benchmark window, non-reproducible results) and the comparison tables.
-- [REVIEW_PHASE5.md](REVIEW_PHASE5.md): the Phase 5 audit. Walk-forward results, survivorship
-  measurement, cost stress test, long-short robustness, with the provenance of every number.
+## How bias is handled
 
-## Bias controls
+- **Look-ahead.** Momentum scores use only month-end prices at and before the formation
+  date. Fundamentals use only filings whose `filed` date is on or before the rebalance
+  date, not the fiscal period they describe. Restated figures keep only the version that
+  was public at the time.
+- **Survivorship.** The universe at each rebalance is the S&P 500 as it was on that
+  date. The one known gap, historical members with no SEC ticker mapping, is measured
+  rather than footnoted: about 2% of the average quarter's names, with a return tilt
+  that is statistically indistinguishable from zero. See
+  [`scripts/coverage_gap_analysis.py`](scripts/coverage_gap_analysis.py).
+- **Costs.** A flat 10 bps one-way cost, charged on both sides of every replacement, is
+  stress-tested against estimated spreads and a computed capacity ceiling of roughly
+  $100 to 350 million. See [`scripts/cost_realism_analysis.py`](scripts/cost_realism_analysis.py).
+- **Data snooping.** Every strategy parameter is a fixed textbook choice. The one
+  conclusion that was read off the data, the best blend weight, is the one that got a
+  walk-forward test.
+- **Reproducibility.** Runs are bit-for-bit identical run to run. The test suite is
+  offline and deterministic.
 
-- **Universe:** S&P 500 membership reconstructed as of each rebalance date, so names are held only
-  while they were actually in the index. No current-constituent lists.
-- **Prices:** signals use only prices available at the formation date. Names missing a required
-  price are excluded before ranking, never ranked as "low".
-- **Fundamentals:** every figure is filtered on `filed <= as_of_date`. Restatements use only the
-  version filed by then.
-- **Returns:** booked at the next rebalance date. The benchmark window is aligned to the
-  strategy's first realised return (a regression test guards this).
-- **Costs:** two-sided turnover-based cost on every rebalance; separate borrow fee on the short
-  book.
-- **Reproducibility:** identical results run-to-run on the same cache. 106 offline tests.
-
-## Known limitations
-
-- Delisted names that Yahoo Finance no longer serves are invisible to every strategy. The
-  measurable part of this gap is quantified above; the unmeasurable part is disclosed.
-- A stock that delists mid-holding-period is dropped from that period's average rather than
-  booked as a loss. Both engines report the count (0 across the full runs, so currently moot).
-- The cost model is flat. Realistic at small scale, not at institutional scale.
-- Blend rebalancing between sleeves is not separately costed (about 1 bp per quarter).
-- Universe is the S&P 500 only, which is a large-cap, liquid index by construction. The findings
-  should not be assumed to transfer to small caps.
-
-## How to run it
-
-```
-python -m venv .venv
-.venv\Scripts\activate          # Windows (source .venv/bin/activate on Mac/Linux)
-pip install -r requirements.txt
-python -m pytest tests/         # offline, all green
-jupyter notebook notebooks/     # run 01 to 05 in order
-```
-
-The first run of each notebook downloads and caches prices (yfinance) and fundamentals (SEC
-EDGAR) under `data/cache/`. Slow once, fast after. The cache is gitignored. Both audit scripts run
-offline against it:
-
-```
-python scripts/coverage_gap_analysis.py    # survivorship measurement (REVIEW_PHASE5 §4)
-python scripts/cost_realism_analysis.py    # spread and capacity estimate (REVIEW_PHASE5 §5)
-```
-
-## Repository layout
+## Project structure
 
 ```
 src/
-  config.py            one place for every parameter: windows, sizes, dates, costs
-  data_layer/          prices, point-in-time constituents, SEC EDGAR fundamentals, cache, quality checks
-  strategy/            momentum and value signal construction
-  backtest/            long-only engine, value engine, long-short engine
-  costs/               turnover-based transaction cost model
-  evaluation/          metrics, comparison and blends, walk-forward, plots
-tests/                 106 offline tests with hand-computable synthetic cases
-scripts/               the two reproducible audit scripts
-notebooks/             phases 1 to 5, in order
+  config.py          every tunable parameter in one place, with the reasoning
+  data_layer/        prices (Yahoo Finance), point-in-time constituents, SEC EDGAR
+                     fundamentals, on-disk cache, data quality guards
+  strategy/          momentum and value signals and selection
+  costs/             turnover-based transaction cost model
+  backtest/          monthly, quarterly and long-short engines
+  evaluation/        metrics, comparison and blending, walk-forward, plots
+tests/               106 offline tests with hand-computable expected values
+scripts/             the two Phase 5 audit scripts
+notebooks/           the five phases, executed and committed with outputs
 ```
 
-## Design principles
+Strategy code never talks to a data vendor directly, so the data source can be swapped
+without touching signal or backtest logic.
 
-- **Swappable data layer.** Strategy logic never talks to a vendor directly, so yfinance can be
-  replaced without touching signal or backtest code.
-- **Config-driven.** Lookbacks, portfolio size, dates and costs live in `src/config.py`, not
-  scattered across modules.
-- **Honest numbers over flattering ones.** No pass/fail verdicts, every number has a provenance,
-  and awkward results are reported as found.
+## Run it
 
-## Development history
+```bash
+python -m venv .venv
+.venv\Scripts\activate          # Windows; source .venv/bin/activate elsewhere
+pip install -r requirements.txt
+python -m pytest tests/         # offline, about a second
+jupyter notebook notebooks/     # run 01 to 05 in order
+```
 
-Built iteratively with Claude Code assistance. Each step is a separate commit describing what
-changed and why, so the project's evolution is recoverable. The bar I set for myself was being
-able to open any file cold in an interview and explain every decision in it.
+Requires Python 3.12 or later. The first run of each notebook downloads and caches its
+data under `data/cache/`, which takes an hour or so for the SEC fundamentals; every run
+after that is minutes. The cache is gitignored. Both audit scripts run offline against it.
 
-## What's next
+## Limitations
 
-This repo is complete as a study. Its successor, [quantlab](https://github.com/Rossod4/quantlab),
-is a general research platform that ports these strategies onto a point-in-time data context where
-look-ahead is structurally impossible, and adds a validation report card (deflated Sharpe, purged
-cross-validation, White's reality check, Monte Carlo, capacity) that gates any strategy before it
-can be paper traded.
+- Yahoo Finance is an unofficial source and roughly 150 delisted tickers have no price
+  history at all. This affects every strategy equally, but SPY implicitly contains those
+  names' real returns, which slightly flatters every strategy-versus-index comparison.
+- Delistings mid-holding are dropped rather than booked at a loss. This is optimistic
+  and is disclosed in the engines.
+- The cost model is flat. It is realistic at small size for S&P 500 names and thinnest
+  for the short book of the long-short strategy, where spreads are widest.
+- Planned extensions, not started: per-stock slippage, a quality factor, universes
+  beyond the S&P 500. The successor project, [quantlab](https://github.com/Rossod4/quantlab),
+  rebuilds this as a platform with these gaps designed in from the start.
+
+## How this was built
+
+Built with [Claude Code](https://claude.com/claude-code), an AI coding assistant. I set the
+research questions, chose every strategy parameter and evaluation criterion, and reviewed
+each design decision; the assistant wrote most of the code. Every phase was committed
+separately with a message saying what changed and why, and the two review documents
+record what was checked and what was found. I can explain any part of it.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

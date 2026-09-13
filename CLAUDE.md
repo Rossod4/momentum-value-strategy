@@ -1,34 +1,51 @@
-# Project context for Claude Code
+# CLAUDE.md
 
-## What this is
-A point-in-time, cost-aware factor-strategy backtester on the S&P 500 (momentum, value, blends,
-long-short momentum) with a bias audit and walk-forward test. See README.md for results and
-REVIEW.md / REVIEW_PHASE5.md for the audit record. The project is complete as a study; its
-successor is the `quantlab` repo in the same parent directory.
+Guidance for Claude Code when working in this repository.
 
-## Working conventions
-- Explain reasoning, not just code, especially for strategy logic and evaluation choices. The
-  owner wants to be able to defend every design decision in an interview.
-- Flag non-obvious design choices briefly so they can be questioned.
-- Check in before big structural changes rather than building ahead.
-- Keep code readable to a novice Python programmer, with relevant comments.
-- No chart-pattern or technical-pattern analysis, ever.
-- Honest numbers over flattering ones. No result gets rescued; awkward findings are reported as
-  found and their provenance recorded.
+## Project
 
-## Invariants (do not weaken)
-- Every signal uses only data available at its formation date.
-- Fundamentals are gated on filed date (`filed <= as_of_date`), never period end.
-- Index membership is reconstructed as of each rebalance date.
-- Costs are charged two-sided on turnover. The benchmark window is aligned to the strategy's
-  first realised return.
-- `python -m pytest tests/` must stay green and offline. Numerical results in REVIEW.md and
-  REVIEW_PHASE5.md are frozen; a change that moves them needs a documented reason.
+A backtester for momentum and value strategies on the S&P 500, 2012 to 2026, built as a
+learning project and interview portfolio piece by Alex Gard (Mathematics, University of
+Bristol). All five planned phases are complete. Read `README.md` for the results and
+`REVIEW.md` / `REVIEW_PHASE5.md` for the reasoning behind every design choice. The
+successor platform is `Rossod4/quantlab`; new platform work goes there, not here.
 
-## Running
+## Commands
+
+```bash
+python -m pytest tests/                   # offline, deterministic, ~1s, must stay green
+jupyter nbconvert --to notebook --execute --inplace notebooks/0N_*.ipynb   # re-run one notebook
+python scripts/coverage_gap_analysis.py   # reproduces REVIEW_PHASE5 section 4 from the cache
+python scripts/cost_realism_analysis.py   # reproduces REVIEW_PHASE5 section 5 from the cache
 ```
-.venv\Scripts\activate
-python -m pytest tests/
-jupyter notebook notebooks/
-```
-The data cache under `data/cache/` is gitignored and regenerated on first notebook run.
+
+Notebooks are committed **with outputs**. If you change anything a notebook depends on,
+re-run it and commit the executed version. Notebook 02 takes about 20 minutes with a warm
+cache; a cold cache adds an hour of SEC EDGAR downloads.
+
+## Invariants
+
+- **No look-ahead.** Signals at a rebalance date may use only prices dated on or before
+  it and only fundamentals whose `filed` date is on or before it. Tests in
+  `tests/test_fundamentals.py` and `tests/test_momentum.py` guard this; extend them if
+  you add a data path.
+- **Point-in-time universe.** Membership comes from `data_layer/constituents.py` as-of
+  the rebalance date. Never use current membership.
+- **Costs are charged on both sides** of every replacement (`2 x turnover x cost_bps`).
+  See REVIEW.md fix 1 before touching `costs/transaction_costs.py`.
+- **Benchmark windows match strategy windows.** `get_prices()` trims to the requested
+  range; REVIEW.md fix 2 explains why.
+- **Reproducibility.** Cache entries record the date range they were fetched for, so
+  delisted tickers are not re-downloaded. Do not change cache semantics casually.
+- **Parameters live in `src/config.py`** with the reasoning in comments. Do not hardcode
+  lookbacks, portfolio sizes or dates elsewhere.
+
+## Conventions
+
+- Code must be readable by a novice: plain names, comments that say why, no cleverness.
+- Non-obvious design choices get flagged in the commit message and, if they change a
+  result, in the relevant review document.
+- Results are reported as honest numbers. No pass/fail verdicts, no tuning until a
+  result looks better, no quietly dropping an unflattering finding.
+- Dependencies are pinned in `requirements.txt`. Bump deliberately and re-run the tests
+  and one notebook.
