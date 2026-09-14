@@ -109,9 +109,9 @@ strategy now match exactly, number for number.
 **The honest reading:** both strategies beat SPY on raw return, but **neither
 beats it risk-adjusted** in this window — SPY's Sharpe of 1.05 tops both. That
 is a fair and unsurprising result: 2012–2026 was a strong, low-volatility bull
-market, the easiest possible environment for buy-and-hold. This is worth
-being able to say out loud in an interview — a backtester that never delivers
-an awkward result would be suspicious.
+market, the easiest possible environment for buy-and-hold. It is worth
+stating plainly — a backtester that never delivers an awkward result would be
+suspicious.
 
 ### The blend sweep (common quarterly window, rebalanced to target weights quarterly)
 

@@ -4,9 +4,9 @@ Guidance for Claude Code when working in this repository.
 
 ## Project
 
-A backtester for momentum and value strategies on the S&P 500, 2012 to 2026, built as a
-learning project and interview portfolio piece by Alex Gard (Mathematics, University of
-Bristol). All five planned phases are complete. Read `README.md` for the results and
+A backtester for momentum and value strategies on the S&P 500, 2012 to 2026, written by
+Alex Gard to test whether the textbook strategies hold up once the usual backtest biases
+are removed. All five planned phases are complete. Read `README.md` for the results and
 `REVIEW.md` / `REVIEW_PHASE5.md` for the reasoning behind every design choice. The
 successor platform is `Rossod4/quantlab`; new platform work goes there, not here.
 
